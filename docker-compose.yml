@@ -1,0 +1,57 @@
+vpn:
+  build: openvpn-client/.
+  command: -f -v
+  volumes:
+    - ~/vpn-config:/vpn
+  cap_add: 
+    - NET_ADMIN
+  dns:
+    - 8.8.4.4
+    - 8.8.8.8
+  devices:
+    - /dev/net/tun
+  env_file:
+    - openvpn-client/env.sample
+  restart: always 
+
+bit:
+  build: transmission/.
+  volumes:
+    - ~/media:/transmission/downloads
+  env_file:
+    - transmission/env.sample
+  net: container:vpn
+  restart: always
+
+couch:
+  build: couchpotato/.
+  volumes:
+   - ~/couchpotato:/data
+   - ~/couchpotato:/config
+  links:
+   - bit
+  restart: always
+
+plex:
+  image: wernight/plex-media-server
+  volumes:
+    - ~/plex-config:/config
+    - ~/media:/media
+  ports:
+    - 32400:32400
+  restart: always
+
+web:
+  image: dperson/nginx
+  command: -H -w "http://bit:9091/transmission;/transmission" -w "http://couch:5050;/couchpotato" -w "http://plex:32400/web;/web"
+  links:
+    - vpn:bit
+    - couch
+    - plex
+  ports:
+    - 443:443
+  restart: always
+
+
+
+
